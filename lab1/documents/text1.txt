@@ -1,0 +1,4 @@
+self.ui.add_document_pushButton.clicked.connect(self.add_doc_button_handler)
+self.ui.document_listWidget.currentRowChanged.connect(self.docs_list_item_changed_handler)
+self.ui.search_pushButton.clicked.connect(self.get_docs)
+self.docs_view_indexes = []
