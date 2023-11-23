@@ -1,6 +1,6 @@
 import pytest
 import sqlite3
-from main import SearchModel
+from main import Model
 from sklearn.metrics import precision_recall_curve
 import matplotlib.pyplot as plt
 
@@ -50,20 +50,20 @@ def test_fixture():
 
 def test_r():
     search_word = 'apple'
-    s = SearchModel()
+    s = Model()
     s.db_docs_conn = sqlite3.connect(r'test-docs.db')
     s.db_docs_cur = db_docs_conn.cursor()
-    result = s._search_word_in_docs(search_word)
+    result = s.search_docs(search_word)
     assert len(result) == 3
     r = len(result) / 3
     assert r == 1 
 
 def test_p():
     search_word = 'cucumber'
-    s = SearchModel()
+    s = Model()
     s.db_docs_conn = sqlite3.connect(r'test-docs.db')
     s.db_docs_cur = db_docs_conn.cursor()
-    result = s._search_word_in_docs(search_word)
+    result = s.search_docs(search_word)
     assert len(result) == 4
     p = 4 / len(result)
     assert p == 1 
@@ -71,10 +71,10 @@ def test_p():
 
 def test_a():
     search_word = 'avocado'
-    s = SearchModel()
+    s = Model()
     s.db_docs_conn = sqlite3.connect(r'test-docs.db')
     s.db_docs_cur = db_docs_conn.cursor()
-    result = s._search_word_in_docs(search_word)
+    result = s.search_docs(search_word)
     assert len(result) == 3
     a = (len(result) + (len(test_data) - len(result))) / len(test_data)
     assert a == 1 
@@ -82,10 +82,10 @@ def test_a():
 
 def test_e():
     search_word = 'apple'
-    s = SearchModel()
+    s = Model()
     s.db_docs_conn = sqlite3.connect(r'test-docs.db')
     s.db_docs_cur = db_docs_conn.cursor()
-    result = s._search_word_in_docs(search_word)
+    result = s.search_docs(search_word)
     assert len(result) == 3
     a = (len(result) - 3) / len(test_data)
     assert a == 0
@@ -93,10 +93,10 @@ def test_e():
 
 def test_f():
     search_word = 'cucumber'
-    s = SearchModel()
+    s = Model()
     s.db_docs_conn = sqlite3.connect(r'test-docs.db')
     s.db_docs_cur = db_docs_conn.cursor()
-    result = s._search_word_in_docs(search_word)
+    result = s.search_docs(search_word)
     assert len(result) == 4
     r = len(result) / 4
     p = 4 / len(result)
@@ -106,10 +106,10 @@ def test_f():
 
 def test_11():
     search_word = 'cucumber'
-    s = SearchModel()
+    s = Model()
     s.db_docs_conn = sqlite3.connect(r'test-docs.db')
     s.db_docs_cur = db_docs_conn.cursor()
-    result = s._search_word_in_docs(search_word)
+    result = s.search_docs(search_word)
     y_true = [True, True, True, True]
     expected = [2,4,6,7]
     y_scores = [result[i] == expected[i] for i in range(len(result))]

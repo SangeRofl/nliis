@@ -16,8 +16,16 @@ class Document:
         self.date = date
         self.doc_id = doc_id
 
-    def add_doc_to_base(self):
-        pass
+    def get_lemmas(self, ful_lemmas):
+        text = self.content.lower()
+        doc = nlp(text)
+        doc_lemmas = []
+        for token in doc:
+            doc_lemmas.append(token.lemma_)
+        res = []
+        for lemma in ful_lemmas:
+            res.append(1 if lemma in doc_lemmas else 0)
+        return res
 
 class Model:
     def __init__(self):
@@ -145,6 +153,8 @@ class MyMainWindow(QMainWindow):
         if index != -1:
             content = self.cur_docs[index].content
             self.ui.document_textEdit.setText(content)
+
+
 
     def add_doc_button_handler(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Открыть файл", "", "Все файлы (*.*)")
