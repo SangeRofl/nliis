@@ -1,4 +1,5 @@
-self.ui.add_document_pushButton.clicked.connect(self.add_doc_button_handler)
-self.ui.document_listWidget.currentRowChanged.connect(self.docs_list_item_changed_handler)
-self.ui.search_pushButton.clicked.connect(self.get_docs)
-self.docs_view_indexes = []
+"We will continue with our war aims, mainly to eradicate Hamas," Netanyahu said.
+
+"There is no hope for peace between Israel and the Palestinians, and between Israel and the Arab states, if we don't eradicate this murderous movement that threatens the future of all of us," he added.
+
+Cameron is meeting with both Israeli and Palestinian leaders about the crisis and the way forward, the United Kingdom's foreign office said Thursday.
