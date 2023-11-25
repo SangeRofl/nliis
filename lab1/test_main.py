@@ -50,9 +50,7 @@ def test_fixture():
 
 def test_r():
     search_word = 'apple'
-    s = Model()
-    s.db_docs_conn = sqlite3.connect(r'test-docs.db')
-    s.db_docs_cur = db_docs_conn.cursor()
+    s = Model('test-docs.db')
     result = s.search_docs(search_word)
     assert len(result) == 3
     r = len(result) / 3
@@ -60,9 +58,7 @@ def test_r():
 
 def test_p():
     search_word = 'cucumber'
-    s = Model()
-    s.db_docs_conn = sqlite3.connect(r'test-docs.db')
-    s.db_docs_cur = db_docs_conn.cursor()
+    s = Model('test-docs.db')
     result = s.search_docs(search_word)
     assert len(result) == 4
     p = 4 / len(result)
@@ -71,9 +67,7 @@ def test_p():
 
 def test_a():
     search_word = 'avocado'
-    s = Model()
-    s.db_docs_conn = sqlite3.connect(r'test-docs.db')
-    s.db_docs_cur = db_docs_conn.cursor()
+    s = Model('test-docs.db')
     result = s.search_docs(search_word)
     assert len(result) == 3
     a = (len(result) + (len(test_data) - len(result))) / len(test_data)
@@ -82,9 +76,7 @@ def test_a():
 
 def test_e():
     search_word = 'apple'
-    s = Model()
-    s.db_docs_conn = sqlite3.connect(r'test-docs.db')
-    s.db_docs_cur = db_docs_conn.cursor()
+    s = Model('test-docs.db')
     result = s.search_docs(search_word)
     assert len(result) == 3
     a = (len(result) - 3) / len(test_data)
@@ -93,9 +85,7 @@ def test_e():
 
 def test_f():
     search_word = 'cucumber'
-    s = Model()
-    s.db_docs_conn = sqlite3.connect(r'test-docs.db')
-    s.db_docs_cur = db_docs_conn.cursor()
+    s = Model('test-docs.db')
     result = s.search_docs(search_word)
     assert len(result) == 4
     r = len(result) / 4
@@ -106,9 +96,7 @@ def test_f():
 
 def test_11():
     search_word = 'cucumber'
-    s = Model()
-    s.db_docs_conn = sqlite3.connect(r'test-docs.db')
-    s.db_docs_cur = db_docs_conn.cursor()
+    s = Model('test-docs.db')
     result = s.search_docs(search_word)
     y_true = [True, True, True, True]
     expected = [2,4,6,7]

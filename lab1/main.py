@@ -28,14 +28,15 @@ class Document:
         return res
 
 class Model:
-    def __init__(self):
+    
+    def __init__(self, db_name: str = 'docs.db'):
+        self.db_docs_conn = sqlite3.connect(db_name)
+        self.db_docs_cur = self.db_docs_conn.cursor()
         self.lemmas = []
         self.connect_to_doc_database()
         self.get_lemmas_list()
 
     def connect_to_doc_database(self):
-        self.db_docs_conn = sqlite3.connect(r'docs.db')
-        self.db_docs_cur = self.db_docs_conn.cursor()
         self.db_docs_cur.execute("""
         CREATE TABLE IF NOT EXISTS docs(
            id INTEGER PRIMARY KEY AUTOINCREMENT,
