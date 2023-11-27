@@ -110,7 +110,7 @@ class Model:
         res = []
         search_text=search_text.replace(" AND ", " ")
         search_strings = search_text.split(" OR ")
-        search_strings = (i.lower() for i in search_strings)
+        search_strings = [i.lower() for i in search_strings]
         for search_string in search_strings:
             search_lemm_vect = []
             search_lemmas = []
@@ -147,7 +147,7 @@ class Model:
         doc_tokens = nlp(doc.content)
         search_lemmas = [self.lemmas[i] for i in range(len(self.lemmas)) if search_lemm_vect[i] == 1]
         for token in doc_tokens:
-            if token.lemma_ in search_lemmas and token.lemma_ not in res:
+            if token.lemma_.lower() in search_lemmas and token.lemma_.lower() not in res:
                 res.append(token.text)
         return res
 
