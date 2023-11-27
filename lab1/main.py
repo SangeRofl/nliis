@@ -1,5 +1,6 @@
 import view
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QWidget
+from PyQt6.QtGui import QColor, QFont, QTextCharFormat, QTextCursor
 import sqlite3
 import sys
 from pathlib import Path
@@ -75,29 +76,79 @@ class Model:
                 if token.lemma_ not in self.lemmas:
                     self.lemmas.append(token.lemma_.lower())
 
-    def search_docs(self, search_string: str) -> list:
+    def search_docs(self, search_string: str) -> (list, list):
         res = []
+        res_words = []
         if search_string == "":
-            return self.get_all_docs()
+            res = self.get_all_docs()
+            res_words = [[] for i in range(len(res))]
         else:
-            search_string = search_string.lower()
+            search_lemm_vects = self.gen_search_lemm_vects(search_text=search_string)
+            docs = self.get_all_docs()
+
+            for doc in docs:
+                doc_add_flag = True
+                for search_lemm_vect in search_lemm_vects:
+                    if search_lemm_vect == None:
+                        continue
+                    doc_lemm_vect = doc.get_lemmas(self.lemmas)
+                    flag = True
+                    for i in range(len(self.lemmas)):
+                        if search_lemm_vect[i] == 1 and doc_lemm_vect[i] == 0:
+                            flag = False
+                            break
+                        elif search_lemm_vect[i] == -1 and doc_lemm_vect[i] == 1:
+                            flag = False
+                            break
+                    if flag and doc not in res:
+                        res.append(doc)
+                        res_words.append(self.gen_words_to_highlight(search_lemm_vect, doc))
+
+        return res, res_words
+
+    def gen_search_lemm_vects(self, search_text: str) -> list:
+        res = []
+        search_text=search_text.replace(" AND ", " ")
+        search_strings = search_text.split(" OR ")
+        search_strings = (i.lower() for i in search_strings)
+        for search_string in search_strings:
             search_lemm_vect = []
             search_lemmas = []
+            search_not_lemmas = []
+            not_flag = False
             for token in nlp(search_string):
+                if token.text == "not":
+                    not_flag = True
+                    continue
+                if not_flag:
+                    not_flag = False
+                    search_not_lemmas.append(token.lemma_)
+                if token.lemma_ not in self.lemmas and not_flag == False:
+                    search_lemm_vect = None
+                    break
                 search_lemmas.append(token.lemma_)
+            if search_lemm_vect == None:
+                res.append(None)
+                continue
             for lemma in self.lemmas:
-                search_lemm_vect.append(1 if lemma in search_lemmas else 0)
+                if lemma in search_lemmas and lemma not in search_not_lemmas:
+                    value = 1
+                elif lemma in search_lemmas and lemma in search_not_lemmas:
+                    value = -1
+                else:
+                    value = 0
+                search_lemm_vect.append(value)
+            res.append(search_lemm_vect)
+        return res
 
-            docs = self.get_all_docs()
-            for doc in docs:
-                doc_lemm_vect = doc.get_lemmas(self.lemmas)
-                flag = True
-                for i in range(len(self.lemmas)):
-                    if search_lemm_vect[i] == 1 and doc_lemm_vect[i] == 0:
-                        flag = False
-                        break
-                if flag:
-                    res.append(doc)
+
+    def gen_words_to_highlight(self, search_lemm_vect, doc):
+        res = []
+        doc_tokens = nlp(doc.content)
+        search_lemmas = [self.lemmas[i] for i in range(len(self.lemmas)) if search_lemm_vect[i] == 1]
+        for token in doc_tokens:
+            if token.lemma_ in search_lemmas and token.lemma_ not in res:
+                res.append(token.text)
         return res
 
 
@@ -121,6 +172,7 @@ class MyMainWindow(QMainWindow):
         self.ui.document_listWidget.currentRowChanged.connect(self.docs_list_item_changed_handler)
         self.ui.search_pushButton.clicked.connect(self.search_button_clicked_handler)
         self.cur_docs = []
+        self.words_to_highlight = []
 
 
 
@@ -138,8 +190,27 @@ class MyMainWindow(QMainWindow):
         #         if self.ui.search_lineEdit.text() in doc_lemmas:
         #             res.append(item[0])
         #     self.get_docs(res)
-        self.cur_docs = self.model.search_docs(self.ui.search_lineEdit.text())
+        self.cur_docs, self.words_to_highlight = self.model.search_docs(self.ui.search_lineEdit.text())
         self.update()
+
+    def highlight_words_in_text(self, text_container: QWidget, index: int):
+        words = self.words_to_highlight[index]
+        text = self.cur_docs[index].content
+        for word in words:
+            start_pos = text.find(word)
+            while start_pos != -1:
+                self.highlight_text_fragment(self.ui.document_textEdit, start_pos, start_pos+len(word))
+                start_pos = text.find(word, start_pos+1)
+
+
+    def highlight_text_fragment(self, text_container: QWidget, start_pos, end_pos, background_color: QColor = QColor(255, 250, 95, 200)):
+            cursor = text_container.textCursor()
+            cursor = self.ui.document_textEdit.textCursor()
+            cursor.setPosition(start_pos)
+            cursor.setPosition(end_pos, QTextCursor.MoveMode.KeepAnchor)
+            text_format = QTextCharFormat()
+            text_format.setBackground(background_color)
+            cursor.mergeCharFormat(text_format)
 
     def update(self):
         self.update_list()
@@ -154,6 +225,7 @@ class MyMainWindow(QMainWindow):
         if index != -1:
             content = self.cur_docs[index].content
             self.ui.document_textEdit.setText(content)
+            self.highlight_words_in_text(self.ui.document_textEdit, index)
 
 
 
