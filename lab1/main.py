@@ -1,21 +1,24 @@
 import view
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QWidget
-from PyQt6.QtGui import QColor, QFont, QTextCharFormat, QTextCursor
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QWidget, QCompleter
+from PyQt6.QtGui import QColor, QFont, QTextCharFormat, QTextCursor, QDesktopServices
+from PyQt6.QtCore import QStringListModel, Qt, QUrl
 import sqlite3
 import sys
 from pathlib import Path
 from os import path
+import os
 import spacy
 from datetime import datetime
 
 nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
 class Document:
-    def __init__(self, name, content, date, doc_id):
+    def __init__(self, name, content, date, doc_id, path):
         self.name = name
         self.content = content
         self.date = date
         self.doc_id = doc_id
+        self.path = path
 
     def get_lemmas(self, ful_lemmas):
         text = self.content.lower()
@@ -43,7 +46,8 @@ class Model:
            id INTEGER PRIMARY KEY AUTOINCREMENT,
            name TEXT,
            content TEXT,
-           date TEXT);
+           date TEXT,
+           path TEXT);
         """)
         self.db_docs_conn.commit()
         self.db_docs_cur.execute("SELECT * FROM docs;")
@@ -64,7 +68,7 @@ class Model:
         return self.get_docs(ids)
 
     def get_doc_from_data(self, data) -> Document:
-        return Document(doc_id=data[0], name = data[1], content=data[2], date=data[3])
+        return Document(doc_id=data[0], name = data[1], content=data[2], date=data[3], path=data[4])
 
 
     def get_lemmas_list(self):
@@ -152,14 +156,17 @@ class Model:
         return res
 
 
-    def add_doc(self, name, content):
+    def add_doc(self, name, content, path):
         date = datetime.now().strftime("%Y-%m-%d")
         self.db_docs_cur.execute(f"""
-                                    INSERT INTO docs(name, content, date)
-                                    VALUES(?, ?, ?);
-                                    """, (name, content, date))
+                                    INSERT INTO docs(name, content, date, path)
+                                    VALUES(?, ?, ?, ?);
+                                    """, (name, content, date, path))
         self.db_docs_conn.commit()
         self.get_lemmas_list()
+
+    def get_comleter_list(self):
+        return self.lemmas
 
 class MyMainWindow(QMainWindow):
     def __init__(self):
@@ -173,8 +180,20 @@ class MyMainWindow(QMainWindow):
         self.ui.search_pushButton.clicked.connect(self.search_button_clicked_handler)
         self.cur_docs = []
         self.words_to_highlight = []
+        self.setup_completer()
+        self.ui.label_4.setText(f'<a href="{os.getcwd()}">Ссылка на документ</a>')
+        self.ui.label_4.setOpenExternalLinks(True)
+        self.ui.label_4.linkActivated.connect(self.open_file_explorer)
 
+    def open_file_explorer(self, url):
+        QDesktopServices.openUrl(QUrl(url))
 
+    def setup_completer(self):
+        completer_list = self.model.get_comleter_list()
+        completer = QCompleter(completer_list, self.ui.search_lineEdit)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.ui.search_lineEdit.setCompleter(completer)
+        # self.ui.search_lineEdit.textChanged.connect(self.update_display)
 
     def search_button_clicked_handler(self):
         # self.db_docs_cur.execute("SELECT * FROM docs;")
@@ -214,6 +233,7 @@ class MyMainWindow(QMainWindow):
 
     def update(self):
         self.update_list()
+        self.ui.document_textEdit.clear()
 
     def update_list(self):
         self.ui.document_listWidget.clear()
@@ -226,6 +246,7 @@ class MyMainWindow(QMainWindow):
             content = self.cur_docs[index].content
             self.ui.document_textEdit.setText(content)
             self.highlight_words_in_text(self.ui.document_textEdit, index)
+            self.ui.label_4.setText(f'<a href="{path.dirname(self.cur_docs[index].path)}">Ссылка на документ</a>')
 
 
 
@@ -235,7 +256,8 @@ class MyMainWindow(QMainWindow):
             with open(file_path, "rt") as f:
                 content = f.read()
                 #print(f.name[:-4], content, datetime.now().strftime("%Y-%m-%d"))
-                self.model.add_doc(name=path.basename(file_path), content=content)
+                self.model.add_doc(name=path.basename(file_path), content=content, path = file_path)
+        self.update()
 
 
 if __name__ == "__main__":

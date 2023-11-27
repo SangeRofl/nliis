@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file '.\view.ui'
+# Form implementation generated from reading ui file 'view.ui'
 #
 # Created by: PyQt6 UI code generator 6.6.0
 #
@@ -46,6 +46,11 @@ class Ui_MainWindow(object):
         self.add_document_pushButton = QtWidgets.QPushButton(parent=self.centralwidget)
         self.add_document_pushButton.setGeometry(QtCore.QRect(10, 560, 221, 31))
         self.add_document_pushButton.setObjectName("add_document_pushButton")
+        self.label_4 = QtWidgets.QLabel(parent=self.centralwidget)
+        self.label_4.setGeometry(QtCore.QRect(646, 70, 141, 20))
+        self.label_4.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.label_4.setStyleSheet("font-color:rgb(116, 160, 255);")
+        self.label_4.setObjectName("label_4")
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -64,3 +69,4 @@ class Ui_MainWindow(object):
         self.label_2.setText(_translate("MainWindow", "Список документов"))
         self.label_3.setText(_translate("MainWindow", "Документ"))
         self.add_document_pushButton.setText(_translate("MainWindow", "Добавить документ"))
+        self.label_4.setText(_translate("MainWindow", "Ссылка на документ"))
