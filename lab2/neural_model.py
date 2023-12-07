@@ -64,7 +64,7 @@ if __name__ == "__main__":
         keras.layers.Dense(len(labels), activation='softmax')
     ])
     model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-    model.fit(padded_sequences, numeric_labels, epochs=100)
+    model.fit(padded_sequences, numeric_labels, epochs=1000)
     with open("neural_data.pkl", "wb") as file:
         pickle.dump([model, max_length, labels], file)
     new_texts = ['En anglais un même mot peut prendre un sens différent selon le contexte. Si tu veux écrire en chinois, il faut connaître des milliers d’idiogrammes. Et pour un Européen il est presque impossible de produire les clics du xhosa, une des langues africaines.']
