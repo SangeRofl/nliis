@@ -10,13 +10,13 @@ db_docs_cur = db_docs_conn.cursor()
 
 
 test_data = [
-        ('Document1', 'apple', '2023-11-23'),
-        ('Document2', 'cucumber', '2023-11-23'),
-        ('Document3', '', '2023-11-23'),
-        ('Document4', 'apple cucumber', '2023-11-23'),
-        ('Document5', 'avocado', '2023-11-23'),
-        ('Document6', 'avocado cucumber', '2023-11-23'),
-        ('Document7', 'avocado cucumber apple', '2023-11-23')
+        ('Document1', 'apple', '2023-11-23', '/path/to/doc1/'),
+        ('Document2', 'cucumber', '2023-11-23', '/path/to/doc2/'),
+        ('Document3', '', '2023-11-23', '/path/to/doc3/'),
+        ('Document4', 'apple cucumber', '2023-11-23', '/path/to/doc4/'),
+        ('Document5', 'avocado', '2023-11-23', '/path/to/doc5/'),
+        ('Document6', 'avocado cucumber', '2023-11-23', '/path/to/doc6/'),
+        ('Document7', 'avocado cucumber apple', '2023-11-23', '/path/to/doc7/')
     ]
 
 
@@ -27,13 +27,14 @@ def setup_test_data(request):
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         content TEXT,
-        date TEXT);
+        date TEXT,
+        path TEXT);
     """)
     db_docs_conn.commit()
     db_docs_cur.execute("SELECT * FROM docs;")
     
     for data in test_data:
-        db_docs_cur.execute("INSERT INTO docs (name, content, date) VALUES (?, ?, ?);", data)
+        db_docs_cur.execute("INSERT INTO docs (name, content, date, path) VALUES (?, ?, ?, ?);", data)
     db_docs_conn.commit()
 
     def fin():
@@ -51,7 +52,7 @@ def test_fixture():
 def test_r():
     search_word = 'apple'
     s = Model('test-docs.db')
-    result = s.search_docs(search_word)
+    result, _ = s.search_docs(search_word)
     assert len(result) == 3
     r = len(result) / 3
     assert r == 1 
@@ -59,7 +60,7 @@ def test_r():
 def test_p():
     search_word = 'cucumber'
     s = Model('test-docs.db')
-    result = s.search_docs(search_word)
+    result, _ = s.search_docs(search_word)
     assert len(result) == 4
     p = 4 / len(result)
     assert p == 1 
@@ -68,7 +69,7 @@ def test_p():
 def test_a():
     search_word = 'avocado'
     s = Model('test-docs.db')
-    result = s.search_docs(search_word)
+    result, _ = s.search_docs(search_word)
     assert len(result) == 3
     a = (len(result) + (len(test_data) - len(result))) / len(test_data)
     assert a == 1 
@@ -77,7 +78,7 @@ def test_a():
 def test_e():
     search_word = 'apple'
     s = Model('test-docs.db')
-    result = s.search_docs(search_word)
+    result, _ = s.search_docs(search_word)
     assert len(result) == 3
     a = (len(result) - 3) / len(test_data)
     assert a == 0
@@ -86,7 +87,7 @@ def test_e():
 def test_f():
     search_word = 'cucumber'
     s = Model('test-docs.db')
-    result = s.search_docs(search_word)
+    result, _ = s.search_docs(search_word)
     assert len(result) == 4
     r = len(result) / 4
     p = 4 / len(result)
@@ -97,7 +98,7 @@ def test_f():
 def test_11():
     search_word = 'cucumber'
     s = Model('test-docs.db')
-    result = s.search_docs(search_word)
+    result, _ = s.search_docs(search_word)
     y_true = [True, True, True, True]
     expected = [2,4,6,7]
     y_scores = [result[i] == expected[i] for i in range(len(result))]
