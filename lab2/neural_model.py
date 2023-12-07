@@ -3,12 +3,29 @@ from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 import keras
 import os
+import pickle
 
 
 
 class NeuralModel(LangRecognModel):
+    def __init__(self):
+        with open("neural_data.pkl", "rb") as f:
+            data = pickle.load(f)
+
+        self.model, self.max_len, self.labels = data[0], data[1], data[2]
+
     def recognize_language(self, text: str):
-        pass
+        tokenizer = Tokenizer()
+        print(text)
+        new_sequences = tokenizer.texts_to_sequences([text])
+        new_padded_sequences = pad_sequences(new_sequences, maxlen=self.max_len)
+        predictions = self.model.predict(new_padded_sequences)
+        predicted_labels = [self.labels[prediction.argmax()] for prediction in predictions]
+        print(predicted_labels[0])
+        if predicted_labels[0] == Lang.fr.value:
+            return Lang.fr
+        else:
+            return Lang.en
 
 
 if __name__ == "__main__":
@@ -47,7 +64,9 @@ if __name__ == "__main__":
         keras.layers.Dense(len(labels), activation='softmax')
     ])
     model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-    model.fit(padded_sequences, numeric_labels, epochs=10)
+    model.fit(padded_sequences, numeric_labels, epochs=100)
+    with open("neural_data.pkl", "wb") as file:
+        pickle.dump([model, max_length, labels], file)
     new_texts = ['En anglais un même mot peut prendre un sens différent selon le contexte. Si tu veux écrire en chinois, il faut connaître des milliers d’idiogrammes. Et pour un Européen il est presque impossible de produire les clics du xhosa, une des langues africaines.']
     new_sequences = tokenizer.texts_to_sequences(new_texts)
     new_padded_sequences = pad_sequences(new_sequences, maxlen=max_length)
