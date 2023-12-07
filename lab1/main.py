@@ -181,12 +181,14 @@ class MyMainWindow(QMainWindow):
         self.cur_docs = []
         self.words_to_highlight = []
         self.setup_completer()
-        self.ui.label_4.setText(f'<a href="{os.getcwd()}">Ссылка на документ</a>')
+        self.ui.label_4.setText('Ссылка на документ')
         self.ui.label_4.setOpenExternalLinks(True)
         self.ui.label_4.linkActivated.connect(self.open_file_explorer)
 
-    def open_file_explorer(self, url):
-        QDesktopServices.openUrl(QUrl(url))
+    def open_file_explorer(self, path):
+        QDesktopServices.openUrl(path)
+
+
 
     def setup_completer(self):
         completer_list = self.model.get_comleter_list()
@@ -247,6 +249,8 @@ class MyMainWindow(QMainWindow):
             self.ui.document_textEdit.setText(content)
             self.highlight_words_in_text(self.ui.document_textEdit, index)
             self.ui.label_4.setText(f'<a href="{path.dirname(self.cur_docs[index].path)}">Ссылка на документ</a>')
+        else:
+            self.ui.label_4.setText(f'Ссылка на документ')
 
 
 
