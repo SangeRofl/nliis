@@ -3,8 +3,9 @@ from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QApplication, QMainWindow, QCompleter, QFileDialog
 import sys
 from source.view import Ui_MainWindow
-from source.model import Document, Model
+from source.model import Document, Model, Lang
 from os import path
+import speech_recognition as sr
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -19,8 +20,9 @@ class MainWindow(QMainWindow):
         self.ui.link_label.setText('Ссылка на документ')
         self.ui.link_label.setOpenExternalLinks(True)
         self.connect_signals()
-
+        self.cur_docs = self.model.get_all_docs()
         self.update()
+        self.get_actions()
 
     def connect_signals(self):
         self.ui.add_pushButton.clicked.connect(self.add_doc_button_handler)
@@ -28,19 +30,58 @@ class MainWindow(QMainWindow):
         self.ui.search_pushButton.clicked.connect(self.search_button_clicked_handler)
         self.ui.del_pushButton.clicked.connect(self.del_doc_button_handler)
         self.ui.link_label.linkActivated.connect(self.open_file_explorer)
+        self.ui.voice_pushButton.clicked.connect(self.voice_button_handler)
+        self.ui.en_radioButton.clicked.connect(self.en_radio_button_handler)
+        self.ui.ru_radioButton.clicked.connect(self.ru_radio_button_handler)
+
+    def get_actions(self):
+        for action in self.model.actions:
+            self.ui.commands_listWidget.addItem(action.name)
 
     def add_doc_button_handler(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Открыть файл", "", "Все файлы (*.*)")
         if file_path:
-            with open(file_path, "rt") as f:
+            with open(file_path, "rt", encoding="utf-8") as f:
                 content = f.read()
                 # print(f.name[:-4], content, datetime.now().strftime("%Y-%m-%d"))
                 self.model.add_doc(name=path.basename(file_path), content=content, path=file_path)
         self.update()
 
-    def search_button_clicked_handler(self):
-        self.cur_docs, self.words_to_highlight = self.model.search_docs(self.ui.search_lineEdit.text())
+    def do_action(self, action_name, data):
+        if action_name == "Поиск по словам":
+            self.search_docs(" ".join(data))
+
+
+    def en_radio_button_handler(self):
+        if self.ui.en_radioButton.isChecked():
+            self.model.set_lang(Lang.en)
+
+    def ru_radio_button_handler(self):
+        if self.ui.ru_radioButton.isChecked():
+            self.model.set_lang(Lang.ru)
+
+    def voice_button_handler(self):
+        r = sr.Recognizer()
+        with sr.Microphone() as source:
+            audio = r.listen(source)
+        text, action_name, data = self.model.recognize_speech(audio)
+        self.do_action(action_name, data)
+        self.write_chat(1, text)
+
+    def write_chat(self, is_user: bool|int, text: str):
+        if is_user:
+            speaker = "User"
+        else:
+            speaker = "Helper"
+        self.ui.chat_textEdit.append(f"{speaker}:\n{text}\n")
+        self.ui.chat_textEdit.ensureCursorVisible()
+
+
+    def search_docs(self, text: str):
+        self.cur_docs, self.words_to_highlight = self.model.search_docs(text)
         self.update()
+    def search_button_clicked_handler(self):
+        self.search_docs(self.ui.search_lineEdit.text())
 
     def del_doc_button_handler(self):
         if self.ui.docs_listWidget.currentRow() >= 0:
@@ -48,7 +89,6 @@ class MainWindow(QMainWindow):
             self.update()
 
     def update(self):
-        self.cur_docs = self.model.get_all_docs()
         self.update_list()
         self.ui.doc_textEdit.clear()
 

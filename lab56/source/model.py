@@ -4,8 +4,23 @@ import wave
 from gtts import gTTS
 import sqlite3
 import spacy
+from enum import Enum
 
 nlp = spacy.load("en_core_web_sm")
+nlp_ru = spacy.load("ru_core_news_sm")
+
+class Lang(Enum):
+    ru = "ru"
+    en = "en"
+
+
+class Action:
+    def __init__(self, name, ru_examples:list = [], en_examples:list = [], ru_answers:list = [], en_answers:list = []):
+        self.name = name
+        self.ru_examples = ru_examples
+        self.en_examples = en_examples
+        self.ru_answers = ru_answers
+        self.en_answers = en_answers
 
 class Document:
     def __init__(self, name, content, doc_id, path):
@@ -30,6 +45,25 @@ class Model:
         self.connect_to_doc_database()
         self.lemmas = []
         self.get_lemmas_list()
+        self.lang = Lang.en
+        self.create_actions()
+        self._nlp = nlp
+        self._sr_lang = "en-US"
+
+    def create_actions(self):
+        self.actions = []
+        self.actions.append(Action("Поиск по словам", [
+            "найди документ в котором есть слова",
+            "найди документ со словами",
+            "в каком документе встречаются слова",
+        ], [
+            "find a document with word",
+            "search a document with words"
+        ], [
+            "Вот список документов, в которых встречаются данные слова"
+        ], [
+            "Here is a list of documets with these words"
+        ]))
 
     def get_lemmas_list(self):
         self.db_docs_cur.execute("SELECT content FROM docs;")
@@ -49,6 +83,46 @@ class Model:
                    path TEXT);
                 """)
 
+    def recognize_speech(self, audio):
+        r = sr.Recognizer()
+        text = ""
+        action_name = ""
+        text = r.recognize_google(audio, language=self._sr_lang).lower()
+        action_name = self.recognize_action(text)
+        data = self.get_action_data(action_name, text)
+        return text, action_name, data
+
+    def recognize_action(self, command_text: str):
+        command_text = command_text.lower()
+        command_lemmas = {word.lemma_ for word in self._nlp(command_text)}
+        for action in self.actions:
+            for example in action.en_examples:
+                example_lemmas = {word.lemma_ for word in self._nlp(example)}
+                example_len = len(example_lemmas)
+                satisf_lem_count = 0
+                for command_lemma in command_lemmas:
+                    if command_lemma in example_lemmas:
+                        satisf_lem_count+=1
+                if satisf_lem_count/example_len > 0.60:
+                    return action.name
+
+    def get_action_data(self, action_name, text):
+        data = []
+        if action_name == "Поиск по словам":
+            if self.lang == Lang.en:
+                last_action_lemma = [word.lemma_ for word in nlp("word")][0]
+            else:
+                last_action_lemma = [word.lemma_ for word in nlp("слово")][0]
+            text_doc = nlp(text)
+            data_flag = False
+            for token in text_doc:
+                if data_flag:
+                    data.append(token.text)
+                    continue
+                if token.lemma_==last_action_lemma:
+                    data_flag = True
+        return data
+
     def get_docs(self, indexes):
         res = []
         ph = ', '.join(['?' for _ in indexes])
@@ -59,6 +133,17 @@ class Model:
 
     def get_completer_list(self):
         return self.lemmas
+
+    def set_lang(self, lang):
+        if lang == Lang.en:
+            self._nlp = nlp
+            self.lang = Lang.en
+            self._sr_lang = "en-US"
+        else:
+            self._nlp = nlp_ru
+            self.lang = Lang.ru
+            self._sr_lang = "ru-RU"
+
 
     def add_doc(self, name, content, path):
         self.db_docs_cur.execute(f"""
@@ -94,7 +179,7 @@ class Model:
             search_lemmas = [word.lemma_ for word in search_doc]
             for doc in docs:
                 doc_add_flag = True
-                doc_lemm_vect = doc.get_lemmas(self.lemmas)
+                doc_lemm_vect = doc.get_lemmas()
                 for search_lemma in search_lemmas:
                     if search_lemma not in doc_lemm_vect:
                         doc_add_flag = False
