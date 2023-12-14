@@ -3,6 +3,9 @@ import pyaudio
 import wave
 from gtts import gTTS
 import sqlite3
+import spacy
+
+nlp = spacy.load("en_core_web_sm")
 
 class Document:
     def __init__(self, name, content, doc_id, path):
@@ -11,15 +14,31 @@ class Document:
         self.doc_id = doc_id
         self.path = path
 
+    def get_lemmas(self):
+        text = self.content.lower()
+        doc = nlp(text)
+        doc_lemmas = []
+        for token in doc:
+            doc_lemmas.append(token.lemma_)
+        return doc_lemmas
+
 
 class Model:
-    def __init__(self):
-        pass
-
-    def connect_to_db(self, db_filename="./data/docs.sqlite3"):
+    def __init__(self, db_filename="./data/docs.sqlite3"):
         self.db_docs_conn = sqlite3.connect(db_filename)
         self.db_docs_cur = self.db_docs_conn.cursor()
         self.connect_to_doc_database()
+        self.lemmas = []
+        self.get_lemmas_list()
+
+    def get_lemmas_list(self):
+        self.db_docs_cur.execute("SELECT content FROM docs;")
+        for item in self.db_docs_cur.fetchall():
+            text = item[0].lower()
+            doc = nlp(text)
+            for token in doc:
+                if token.lemma_ not in self.lemmas:
+                    self.lemmas.append(token.lemma_.lower())
 
     def connect_to_doc_database(self):
         self.db_docs_cur.execute("""
@@ -38,16 +57,30 @@ class Model:
             res.append(self.get_doc_from_data(i))
         return res
 
+    def get_completer_list(self):
+        return self.lemmas
+
     def add_doc(self, name, content, path):
         self.db_docs_cur.execute(f"""
                                     INSERT INTO docs(name, content, path)
-                                    VALUES(?, ?, ?, ?);
+                                    VALUES(?, ?, ?);
                                     """, (name, content, path))
+        self.db_docs_conn.commit()
+
+    def del_doc(self, index):
+        self.db_docs_cur.execute(f"DELETE FROM docs WHERE id = {index};")
         self.db_docs_conn.commit()
 
     @staticmethod
     def get_doc_from_data(data) -> Document:
         return Document(doc_id=data[0], name=data[1], content=data[2], path=data[3])
+
+    def get_all_docs(self):
+        ids = []
+        self.db_docs_cur.execute(f"SELECT id FROM docs;")
+        for i in self.db_docs_cur.fetchall():
+            ids.append(i[0])
+        return self.get_docs(ids)
 
     def search_docs(self, search_string: str) -> (list, list):
         res = []
@@ -56,26 +89,19 @@ class Model:
             res = self.get_all_docs()
             res_words = [[] for i in range(len(res))]
         else:
-            search_lemm_vects = self.gen_search_lemm_vects(search_text=search_string)
             docs = self.get_all_docs()
-
+            search_doc = nlp(search_string.lower())
+            search_lemmas = [word.lemma_ for word in search_doc]
             for doc in docs:
                 doc_add_flag = True
-                for search_lemm_vect in search_lemm_vects:
-                    if search_lemm_vect == None:
-                        continue
-                    doc_lemm_vect = doc.get_lemmas(self.lemmas)
-                    flag = True
-                    for i in range(len(self.lemmas)):
-                        if search_lemm_vect[i] == 1 and doc_lemm_vect[i] == 0:
-                            flag = False
-                            break
-                        elif search_lemm_vect[i] == -1 and doc_lemm_vect[i] == 1:
-                            flag = False
-                            break
-                    if flag and doc not in res:
-                        res.append(doc)
-                        res_words.append(self.gen_words_to_highlight(search_lemm_vect, doc))
+                doc_lemm_vect = doc.get_lemmas(self.lemmas)
+                for search_lemma in search_lemmas:
+                    if search_lemma not in doc_lemm_vect:
+                        doc_add_flag = False
+                        break
+                if doc_add_flag:
+                    res.append(doc)
+                    res_words.append(search_lemmas)
 
         return res, res_words
 
