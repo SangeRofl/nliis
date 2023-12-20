@@ -6,7 +6,7 @@ from source.view import Ui_MainWindow
 from source.model import Document, Model, Lang
 from os import path
 import speech_recognition as sr
-
+import random
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -15,6 +15,7 @@ class MainWindow(QMainWindow):
         self.ui.retranslateUi(self)
         self.model = Model("source/data/docs.sqlite3")
         self.cur_docs = []
+        self.last_search = ""
         self.words_to_highlight = []
         self.setup_completer()
         self.ui.link_label.setText('Ссылка на документ')
@@ -33,6 +34,7 @@ class MainWindow(QMainWindow):
         self.ui.voice_pushButton.clicked.connect(self.voice_button_handler)
         self.ui.en_radioButton.clicked.connect(self.en_radio_button_handler)
         self.ui.ru_radioButton.clicked.connect(self.ru_radio_button_handler)
+        self.ui.send_pushButton.clicked.connect(self.send_button_handler)
 
     def get_actions(self):
         for action in self.model.actions:
@@ -47,10 +49,20 @@ class MainWindow(QMainWindow):
                 self.model.add_doc(name=path.basename(file_path), content=content, path=file_path)
         self.update()
 
-    def do_action(self, action_name, data):
-        if action_name == "Поиск по словам":
-            self.search_docs(" ".join(data))
+    def send_button_handler(self):
+        message_text = self.ui.chat_lineEdit.text()
+        self.handle_action(*self.model.get_text_message_action(message_text))
 
+    def do_action(self, action_id, data):
+        reply_text = ""
+        if action_id == 0:
+            self.search_docs(" ".join(data))
+            if self.model.lang == Lang.ru:
+                reply_text = random.choice(self.model.actions[action_id].ru_answers)
+            else:
+                reply_text = random.choice(self.model.actions[action_id].en_answers)
+
+        self.write_chat(0, reply_text)
 
     def en_radio_button_handler(self):
         if self.ui.en_radioButton.isChecked():
@@ -64,9 +76,11 @@ class MainWindow(QMainWindow):
         r = sr.Recognizer()
         with sr.Microphone() as source:
             audio = r.listen(source)
-        text, action_name, data = self.model.recognize_speech(audio)
-        self.do_action(action_name, data)
+        self.handle_action(*self.model.get_audio_message_action(audio))
+
+    def handle_action(self, text, action_id, data):
         self.write_chat(1, text)
+        self.do_action(action_id, data)
 
     def write_chat(self, is_user: bool|int, text: str):
         if is_user:
@@ -76,10 +90,10 @@ class MainWindow(QMainWindow):
         self.ui.chat_textEdit.append(f"{speaker}:\n{text}\n")
         self.ui.chat_textEdit.ensureCursorVisible()
 
-
     def search_docs(self, text: str):
-        self.cur_docs, self.words_to_highlight = self.model.search_docs(text)
+        self.last_search = text
         self.update()
+
     def search_button_clicked_handler(self):
         self.search_docs(self.ui.search_lineEdit.text())
 
@@ -89,6 +103,7 @@ class MainWindow(QMainWindow):
             self.update()
 
     def update(self):
+        self.cur_docs, self.words_to_highlight = self.model.search_docs(self.last_search)
         self.update_list()
         self.ui.doc_textEdit.clear()
 

@@ -5,6 +5,7 @@ from gtts import gTTS
 import sqlite3
 import spacy
 from enum import Enum
+import random
 
 nlp = spacy.load("en_core_web_sm")
 nlp_ru = spacy.load("ru_core_news_sm")
@@ -83,20 +84,24 @@ class Model:
                    path TEXT);
                 """)
 
-    def recognize_speech(self, audio):
-        r = sr.Recognizer()
-        text = ""
-        action_name = ""
-        text = r.recognize_google(audio, language=self._sr_lang).lower()
-        action_name = self.recognize_action(text)
-        data = self.get_action_data(action_name, text)
-        return text, action_name, data
+    def get_text_message_action(self, text):
+        action_id = self.recognize_action(text)
+        data = self.get_action_data(action_id, text)
+        return text, action_id, data
 
-    def recognize_action(self, command_text: str):
+    def get_audio_message_action(self, audio):
+        r = sr.Recognizer()
+        text = r.recognize_google(audio, language=self._sr_lang).lower()
+        return self.get_text_message_action(text)
+
+    def recognize_action(self, command_text: str) -> int:
         command_text = command_text.lower()
+        if not command_text[-1].isalnum():
+            command_text = command_text[:-1]
         command_lemmas = {word.lemma_ for word in self._nlp(command_text)}
-        for action in self.actions:
-            for example in action.en_examples:
+        for action_id in range(len(self.actions)):
+            examples = self.actions[action_id].ru_examples if self.lang == Lang.ru else self.actions[action_id].en_examples
+            for example in examples:
                 example_lemmas = {word.lemma_ for word in self._nlp(example)}
                 example_len = len(example_lemmas)
                 satisf_lem_count = 0
@@ -104,16 +109,16 @@ class Model:
                     if command_lemma in example_lemmas:
                         satisf_lem_count+=1
                 if satisf_lem_count/example_len > 0.60:
-                    return action.name
+                    return action_id
 
-    def get_action_data(self, action_name, text):
+    def get_action_data(self, action_id, text):
         data = []
-        if action_name == "Поиск по словам":
+        if action_id == 0:
             if self.lang == Lang.en:
                 last_action_lemma = [word.lemma_ for word in nlp("word")][0]
             else:
-                last_action_lemma = [word.lemma_ for word in nlp("слово")][0]
-            text_doc = nlp(text)
+                last_action_lemma = [word.lemma_ for word in nlp_ru("слово")][0]
+            text_doc = self._nlp(text)
             data_flag = False
             for token in text_doc:
                 if data_flag:
