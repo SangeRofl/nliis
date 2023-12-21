@@ -5,7 +5,10 @@ from gtts import gTTS
 import sqlite3
 import spacy
 from enum import Enum
+import pyttsx3
 import random
+from pydub import AudioSegment
+import wave
 
 nlp = spacy.load("en_core_web_sm")
 nlp_ru = spacy.load("ru_core_news_sm")
@@ -48,8 +51,13 @@ class Model:
         self.get_lemmas_list()
         self.lang = Lang.en
         self.create_actions()
+        self.voices = dict()
+        self.voice_rate = 150
+        self.voice_volume = 1
+        self.cur_voice_name = ""
         self._nlp = nlp
         self._sr_lang = "en-US"
+        self.find_voices()
 
     def create_actions(self):
         self.actions = []
@@ -65,6 +73,69 @@ class Model:
         ], [
             "Here is a list of documets with these words"
         ]))
+        self.actions.append(Action("Чтение документа", [
+            "Прочитай мне этот документ",
+            "Что написано в этом документе",
+        ], [
+                                       "Read me this document",
+                                       "Could you read me this document"
+                                   ], [
+                                       "В этом документе написано"
+                                   ], [
+                                       "This document says"
+                                   ]))
+        self.actions.append(Action("Приветствие", [
+            "Привет",
+            "Здравствуйте",
+            "Хай",
+        ], [
+                                       "Hello",
+                                       "Greetings"
+                                   ], [
+                                       "Здравствуйте",
+                                        "Приветствую вас, уважаемый",
+                                   ], [
+                                       "Hello",
+                                        "Nice to see you",
+                                   ]))
+        self.actions.append(Action("Удаление документа", [
+            "Удали этот документ",
+            "Уничтожь этот документ",
+            "Удали выбранный документ",
+        ], [
+                                       "Delete this document",
+                                       "remove the document"
+                                   ], [
+                                       "Документ был удален",
+                                       "Хорошо",
+                                   ], [
+                                       "The document was deleted",
+                                       "Ok",
+                                   ]))
+
+    def find_voices(self):
+        self.engine = pyttsx3.init()
+        voices = self.engine.getProperty('voices')
+        for voice in voices:
+            if "Russian" in voice.name or "English" in voice.name:
+                self.voices[voice.name] = voice.id
+        self.cur_voice_name = list(self.voices.keys())[0]
+
+    def stop_speech(self):
+        self.engine.stop()
+    def text_to_speech(self, text: str):
+        self.engine.setProperty("voice", self.voices[self.cur_voice_name])
+        self.engine.setProperty("rate", self.voice_rate)
+        self.engine.setProperty("volume", self.voice_volume)
+        print(self.engine.getProperty("voice"))
+        print(self.engine.getProperty("rate"))
+        print(self.engine.getProperty("volume"))
+        #self.engine.save_to_file(text, "temp.wav")
+        # audio = AudioSegment.from_file_using_temporary_files(buf)
+        # audio.export("temp.wav", format="wav")
+        self.engine.say(text)
+        self.engine.runAndWait()
+        #audio.export("voice.mp3", format="mp3")
 
     def get_lemmas_list(self):
         self.db_docs_cur.execute("SELECT content FROM docs;")
@@ -91,12 +162,15 @@ class Model:
 
     def get_audio_message_action(self, audio):
         r = sr.Recognizer()
-        text = r.recognize_google(audio, language=self._sr_lang).lower()
+        try:
+            text = r.recognize_google(audio, language=self._sr_lang).lower()
+        except:
+            text = ""
         return self.get_text_message_action(text)
 
     def recognize_action(self, command_text: str) -> int:
         command_text = command_text.lower()
-        if not command_text[-1].isalnum():
+        if len(command_text)!= 0 and not command_text[-1].isalnum():
             command_text = command_text[:-1]
         command_lemmas = {word.lemma_ for word in self._nlp(command_text)}
         for action_id in range(len(self.actions)):
@@ -110,6 +184,7 @@ class Model:
                         satisf_lem_count+=1
                 if satisf_lem_count/example_len > 0.60:
                     return action_id
+        return -1
 
     def get_action_data(self, action_id, text):
         data = []
@@ -126,6 +201,10 @@ class Model:
                     continue
                 if token.lemma_==last_action_lemma:
                     data_flag = True
+        elif action_id == -1:
+            return data
+        elif action_id in (1, 2, 3):
+            pass
         return data
 
     def get_docs(self, indexes):
@@ -196,56 +275,25 @@ class Model:
         return res, res_words
 
 
-# def record_audio(file_name, duration):
-#     chunk = 1024
-#     format = pyaudio.paInt16
-#     channels = 1
-#     rate = 44100
-#
-#     p = pyaudio.PyAudio()
-#
-#     stream = p.open(format=format,
-#                     channels=channels,
-#                     rate=rate,
-#                     input=True,
-#                     frames_per_buffer=chunk)
-#
-#     print("Recording started...")
-#
-#     frames = []
-#
-#     for i in range(int(rate / chunk * duration)):
-#         data = stream.read(chunk)
-#         frames.append(data)
-#
-#     print("Recording finished.")
-#
-#     stream.stop_stream()
-#     stream.close()
-#     p.terminate()
-#
-#     wf = wave.open(file_name, 'wb')
-#     wf.setnchannels(channels)
-#     wf.setsampwidth(p.get_sample_size(format))
-#     wf.setframerate(rate)
-#     wf.writeframes(b''.join(frames))
-#     wf.close()
-#
-#
-#
-#
-# if __name__ == "__main__":
-#     # record_audio("test1.wav", 4)
-#     recognizer = sr.Recognizer()
-#     with sr.Microphone() as source:
-#         print("Говорите...")
-#         audio = recognizer.listen(source)
-#     # audio_file = sr.AudioFile("test1.wav")
-#     # with audio_file as source:
-#     #     audio_data = recognizer.record(source)
-#     #     text = recognizer.recognize_google(audio_data)
-#     text = recognizer.recognize_google(audio)
-#     tts = gTTS(text, slow = False)
-#     tts.save("sinth.mp3")
-#     # Выводим текст
-#     print(text)
+
+if __name__ == "__main__":
+    engine = pyttsx3.init()
+
+    # Получение доступных голосов
+    voices_ = engine.getProperty('voices')
+
+    # Вывод списка доступных голосов
+    print("Доступные голоса:")
+    for voice_ in voices_:
+        print(f"ID: {voice_.id}")
+        print(f"Имя: {voice_.name}")
+        print(f"Язык: {voice_.languages}")
+        print(f"Пол: {voice_.gender}")
+        print(f"Возраст: {voice_.age}")
+        print("------------")
+    engine.setProperty("rate", 100)
+    engine.say("Привет мир")
+    engine.runAndWait()
+    engine.setProperty("rate", 200)
+    engine.say("Привет мир")
+    engine.runAndWait()

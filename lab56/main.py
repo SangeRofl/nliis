@@ -1,12 +1,15 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QApplication, QMainWindow, QCompleter, QFileDialog
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 import sys
 from source.view import Ui_MainWindow
 from source.model import Document, Model, Lang
-from os import path
+from os import path, remove
 import speech_recognition as sr
 import random
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -24,6 +27,7 @@ class MainWindow(QMainWindow):
         self.cur_docs = self.model.get_all_docs()
         self.update()
         self.get_actions()
+        self.get_voices()
 
     def connect_signals(self):
         self.ui.add_pushButton.clicked.connect(self.add_doc_button_handler)
@@ -35,10 +39,31 @@ class MainWindow(QMainWindow):
         self.ui.en_radioButton.clicked.connect(self.en_radio_button_handler)
         self.ui.ru_radioButton.clicked.connect(self.ru_radio_button_handler)
         self.ui.send_pushButton.clicked.connect(self.send_button_handler)
+        self.ui.volume_verticalSlider.valueChanged.connect(self.volume_slider_handler)
+        self.ui.speed_verticalSlider.valueChanged.connect(self.speed_slider_handler)
+        self.ui.voice_type_comboBox.currentTextChanged.connect(self.voice_type_combo_box_handler)
+        self.ui.tts_pushButton.clicked.connect(self.tts_button_handler)
+        self.ui.stop_pushButton.clicked.connect(self.stop_button_handler)
+
+    def stop_button_handler(self):
+        self.model.stop_speech()
 
     def get_actions(self):
         for action in self.model.actions:
             self.ui.commands_listWidget.addItem(action.name)
+
+    def get_voices(self):
+        for voice in self.model.voices:
+            self.ui.voice_type_comboBox.addItem(voice)
+
+    def volume_slider_handler(self, value):
+        self.model.voice_volume = value/100
+
+    def voice_type_combo_box_handler(self, text):
+        self.model.cur_voice_name = text
+
+    def speed_slider_handler(self, value):
+        self.model.voice_rate = value
 
     def add_doc_button_handler(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Открыть файл", "", "Все файлы (*.*)")
@@ -53,6 +78,9 @@ class MainWindow(QMainWindow):
         message_text = self.ui.chat_lineEdit.text()
         self.handle_action(*self.model.get_text_message_action(message_text))
 
+    def tts_button_handler(self):
+        self.model.text_to_speech(self.ui.doc_textEdit.toPlainText())
+
     def do_action(self, action_id, data):
         reply_text = ""
         if action_id == 0:
@@ -61,8 +89,51 @@ class MainWindow(QMainWindow):
                 reply_text = random.choice(self.model.actions[action_id].ru_answers)
             else:
                 reply_text = random.choice(self.model.actions[action_id].en_answers)
-
+        elif action_id == -1:
+            if self.model.lang == Lang.ru:
+                reply_text = "Не удалось распознать запрос"
+            else:
+                reply_text = "Could not recognize request"
+        elif action_id == 1:
+            if self.model.lang == Lang.ru:
+                reply_text = random.choice(self.model.actions[action_id].ru_answers)
+            else:
+                reply_text = random.choice(self.model.actions[action_id].en_answers)
+            reply_text += " "+self.ui.doc_textEdit.toPlainText()
+        elif action_id == 2:
+            if self.model.lang == Lang.ru:
+                reply_text = random.choice(self.model.actions[action_id].ru_answers)
+            else:
+                reply_text = random.choice(self.model.actions[action_id].en_answers)
+        elif action_id == 3:
+            if self.model.lang == Lang.ru:
+                reply_text = random.choice(self.model.actions[action_id].ru_answers)
+            else:
+                reply_text = random.choice(self.model.actions[action_id].en_answers)
+            if self.ui.docs_listWidget.currentRow() == -1:
+                if self.model.lang == Lang.ru:
+                    reply_text = "Вы не выбрали документ для удаления"
+                else:
+                    reply_text = "You didn't choose the document for deletion"
+            self.del_doc_button_handler()
+        try:
+            remove('temp.wav')
+        except:
+            print("deletion canceled")
+        self.model.text_to_speech(reply_text)
+        #self.startMusic()
         self.write_chat(0, reply_text)
+
+    def startMusic(self):
+        # Создание объекта QMediaPlayer и установка аудиофайла
+        self.player = QMediaPlayer()
+        self.auot = QAudioOutput()
+        self.auot.setVolume(50)
+        self.player.setAudioOutput(self.auot)
+        self.player.setSource(QUrl.fromLocalFile('temp.wav'))
+        self.player.play()  # Воспроизведение музыки
+
+
 
     def en_radio_button_handler(self):
         if self.ui.en_radioButton.isChecked():

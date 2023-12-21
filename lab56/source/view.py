@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'source\view.ui'
+# Form implementation generated from reading ui file '.\source\view.ui'
 #
 # Created by: PyQt6 UI code generator 6.4.2
 #
@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(905, 589)
+        MainWindow.resize(905, 594)
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(parent=self.centralwidget)
@@ -64,13 +64,16 @@ class Ui_MainWindow(object):
         self.groupBox_2.setGeometry(QtCore.QRect(600, 20, 141, 241))
         self.groupBox_2.setObjectName("groupBox_2")
         self.volume_verticalSlider = QtWidgets.QSlider(parent=self.groupBox_2)
-        self.volume_verticalSlider.setGeometry(QtCore.QRect(90, 70, 22, 141))
+        self.volume_verticalSlider.setGeometry(QtCore.QRect(90, 70, 20, 141))
+        self.volume_verticalSlider.setMaximum(100)
         self.volume_verticalSlider.setProperty("value", 50)
         self.volume_verticalSlider.setOrientation(QtCore.Qt.Orientation.Vertical)
         self.volume_verticalSlider.setObjectName("volume_verticalSlider")
         self.speed_verticalSlider = QtWidgets.QSlider(parent=self.groupBox_2)
         self.speed_verticalSlider.setGeometry(QtCore.QRect(10, 70, 22, 141))
-        self.speed_verticalSlider.setProperty("value", 50)
+        self.speed_verticalSlider.setMinimum(1)
+        self.speed_verticalSlider.setMaximum(500)
+        self.speed_verticalSlider.setProperty("value", 150)
         self.speed_verticalSlider.setOrientation(QtCore.Qt.Orientation.Vertical)
         self.speed_verticalSlider.setObjectName("speed_verticalSlider")
         self.voice_type_comboBox = QtWidgets.QComboBox(parent=self.groupBox_2)
@@ -116,7 +119,11 @@ class Ui_MainWindow(object):
         self.ru_radioButton.setObjectName("ru_radioButton")
         self.en_radioButton = QtWidgets.QRadioButton(parent=self.groupBox_3)
         self.en_radioButton.setGeometry(QtCore.QRect(90, 20, 91, 17))
+        self.en_radioButton.setChecked(True)
         self.en_radioButton.setObjectName("en_radioButton")
+        self.stop_pushButton = QtWidgets.QPushButton(parent=self.centralwidget)
+        self.stop_pushButton.setGeometry(QtCore.QRect(390, 570, 181, 23))
+        self.stop_pushButton.setObjectName("stop_pushButton")
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -146,3 +153,4 @@ class Ui_MainWindow(object):
         self.groupBox_3.setTitle(_translate("MainWindow", "Выбор языка общения"))
         self.ru_radioButton.setText(_translate("MainWindow", "Русский"))
         self.en_radioButton.setText(_translate("MainWindow", "Английский"))
+        self.stop_pushButton.setText(_translate("MainWindow", "Стоп"))
